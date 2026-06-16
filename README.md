@@ -1,2 +1,2 @@
 # hakalo-verify-backend
-Microfinance Loan Borrower Verification Platform
+Microfinance Loan Borrower Checklist Website
