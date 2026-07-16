@@ -1,16 +1,23 @@
-# Hakalo Verify Backend - Microfinance Loan Borrower Verification Platform
+# Hakalo Verify [Verify befo yu Loan]-is a Microfinance Loan Borrower Verification Platform built by Hassan Kalokoh from Sierra Leone West Africa
 
 A comprehensive Django REST Framework API for managing institution verification, customer onboarding, and loan eligibility verification with complete audit trail and compliance logging.
 
-## 🚀 Features
+## Features
 
 - **Institution Management** - Register and manage financial institutions
+
 - **Customer Management** - Onboard borrowers with complete KYC data
+
 - **Verification Workflow** - Multi-stage verification process with approvals
+
 - **Audit Logging** - Immutable compliance-grade audit trail
+
 - **JWT Authentication** - Secure API endpoints with token-based auth
+
 - **Role-Based Access Control** - Admin and user permission levels
+
 - **Advanced Filtering & Search** - Filter by status, institution, date range
+
 - **RESTful API** - Full CRUD operations with custom actions
 
 ## 📋 Tech Stack
