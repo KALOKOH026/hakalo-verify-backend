@@ -1,4 +1,4 @@
-# Hakalo Verify [Verify befo yu Loan]-is a Microfinance Loan Borrower Verification Platform built by Hassan Kalokoh from Sierra Leone West Africa
+# Hakalo Verify [Verify befo yu Len]-is a Microfinance Loan Borrower Verification Platform built by Hassan Kalokoh from Sierra Leone West Africa
 
 A comprehensive Django REST Framework API for managing institution verification, customer onboarding, and loan eligibility verification with complete audit trail and compliance logging.
 
