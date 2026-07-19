@@ -1,4 +1,4 @@
-# Hakalo Verify [Verify befo yu Len]-is a Microfinance Loan Borrower Verification Platform built by Hassan Kalokoh from Sierra Leone West Africa
+# Hakalo Verify [Verify befo yu Len]-is a Microfinance Loan Borrower Verification Platform built by Hassan Kalokoh from Sierra Leone West Africa from a two 2 years microfinancing journey.
 
 A comprehensive Django REST Framework API for managing institution verification, customer onboarding, and loan eligibility verification with complete audit trail and compliance logging.
 
@@ -127,7 +127,7 @@ Content-Type: application/json
 **Query Parameters:**
 - `?search=name` - Search by name,national id, or phone number
 - `?is_active=true` - Filter by active status
-- `?country=Kenya` - Filter by country
+- `?country=Sierra Leone` - Filter by country
 - `?ordering=-created_at` - Sort by field
 
 ### Customers
@@ -279,7 +279,7 @@ Content-Type: application/json
 {
   "id": 1,
   "user": 1,
-  "username": "admin",
+  "username": "admin,head of internal audit",
   "action": "CREATE",
   "action_display": "Create",
   "model_name": "Customer",
@@ -389,8 +389,11 @@ Access Django admin at: `http://localhost:8000/admin/`
 
 Features:
 - Institution management with search & filtering
+
 - Customer management with full-text search
+
 - Verification request workflow
+
 - Read-only immutable audit logs
 
 ## 🤝 Contributing
@@ -408,10 +411,10 @@ Eclipse Public License 2.0 - see LICENSE file
 ## 📧 Support
 
 For issues, questions, or suggestions:
-- Email: support@hakalo.example.com
+- Email: samuelkalokohhasaan1999@gmail.com
 - Issues: https://github.com/KALOKOH026/hakalo-verify-backend/issues
 
-## 👤 Author
+## 👤 Author & Developer
 
 **HASSAN KALOKOH**
 - GitHub: [@KALOKOH026](https://github.com/KALOKOH026)
