@@ -90,8 +90,8 @@ POST /api/token/
 Content-Type: application/json
 
 {
-  "username": "your_username",
-  "password": "your_password"
+  "username": "hassan kalokoh",
+  "password": "00000000000000"
 }
 ```
 
@@ -125,7 +125,7 @@ Content-Type: application/json
 | `DELETE` | `/institutions/{id}/` | Delete institution (Admin only) |
 
 **Query Parameters:**
-- `?search=name` - Search by name, code, or email
+- `?search=name` - Search by name,national id, or phone number
 - `?is_active=true` - Filter by active status
 - `?country=Kenya` - Filter by country
 - `?ordering=-created_at` - Sort by field
@@ -142,7 +142,7 @@ Content-Type: application/json
 | `POST` | `/customers/{id}/mark_verified/` | Mark customer as verified |
 
 **Query Parameters:**
-- `?search=name` - Search by name, email, or national ID
+- `?search=name` - Search by name, phone number, or national ID
 - `?is_verified=false` - Filter by verification status
 - `?institution=1` - Filter by institution ID
 - `?gender=M` - Filter by gender
@@ -154,17 +154,17 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "institution": 1,
-  "first_name": "John",
-  "last_name": "Doe",
-  "email": "john@example.com",
-  "phone": "+254700000000",
-  "national_id": "12345678",
-  "date_of_birth": "1990-01-15",
+  "institution": Hakalo Fintech SL,
+  "first_name": "Hassan",
+  "last_name": "Kalokoh",
+  "email": "samuelkalokohhasaan1999@gmail.com",
+  "phone": "+232 76238909",
+  "national_id": "WTR9R8CF",
+  "date_of_birth": "1999-08-05",
   "gender": "M",
-  "address": "123 Main St",
-  "city": "Nairobi",
-  "country": "Kenya"
+  "address": "A28 Police Barracks",
+  "city": "Kenema",
+  "country": "Sierra Leone"
 }
 ```
 
@@ -219,12 +219,12 @@ Content-Type: application/json
 ```python
 {
   "id": 1,
-  "name": "ABC Microfinance",
+  "name": "Kalos Microfinance",
   "code": "ABC001",
-  "country": "Kenya",
+  "country": "Sierra Leone",
   "website": "https://abcmf.example.com",
   "email": "info@abcmf.example.com",
-  "phone": "+254700000000",
+  "phone": "+232 80134542",
   "is_active": true,
   "created_at": "2026-07-03T10:00:00Z",
   "updated_at": "2026-07-03T10:00:00Z"
@@ -236,19 +236,19 @@ Content-Type: application/json
 {
   "id": 1,
   "institution": 1,
-  "institution_name": "ABC Microfinance",
-  "full_name": "John Doe",
-  "first_name": "John",
-  "last_name": "Doe",
-  "email": "john@example.com",
-  "phone": "+254700000000",
-  "national_id": "12345678",
-  "date_of_birth": "1990-01-15",
+  "institution_name": "Kalos Microfinance",
+  "full_name": "Hassan Kalokoh",
+  "first_name": "Hassan",
+  "last_name": "Kalokoh",
+  "email": "samuelkalokohhasaan1999@gmail.com",
+  "phone": "+232 80134542",
+  "national_id": "WTR9R8CF",
+  "date_of_birth": "1999-08-05",
   "gender": "M",
-  "address": "123 Main St",
-  "city": "Nairobi",
-  "country": "Kenya",
-  "is_verified": false,
+  "address": "A28 Police Barracks",
+  "city": "Kenema",
+  "country": "Sierra Leone",
+  "is_verified": yes,
   "created_at": "2026-07-03T10:00:00Z",
   "updated_at": "2026-07-03T10:00:00Z"
 }
@@ -259,15 +259,15 @@ Content-Type: application/json
 {
   "id": 1,
   "customer": 1,
-  "customer_name": "John Doe",
+  "customer_name": "Hassan Kalokoh",
   "verification_code": "VER-2026-000001",
-  "status": "PENDING",
-  "verification_method": "EMAIL",
+  "status": "PENDING APPROVAL",
+  "verification_method": "Authentic Phone Number",
   "verification_data": null,
-  "verified_by": null,
-  "verified_by_username": null,
-  "verified_at": null,
-  "rejection_reason": null,
+  "verified_by": branch manager,
+  "verified_by_username": Kadie Sesay,
+  "verified_at": Kenema Branch,
+  "rejection_reason": Oustanding with 2 active microfinace Institutions, Amount Total Le 15,000,
   "expires_at": "2026-07-10T10:00:00Z",
   "created_at": "2026-07-03T10:00:00Z",
   "updated_at": "2026-07-03T10:00:00Z"
