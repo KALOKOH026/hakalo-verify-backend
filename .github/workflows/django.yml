@@ -1,4 +1,7 @@
-cp .env.example .envname: Django CI
+name: Django CI
+
+permissions:
+  contents: read
 
 on:
   push:
