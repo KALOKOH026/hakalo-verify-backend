@@ -2,6 +2,22 @@
 It is a neutral, secure borrower-risk verification infrastructure that protects institutional data and does not facilitate customer poaching.
 The ideal was generated and visualized by Hassan Kalokoh from Sierra Leone West Africa serving as a Loan Officer from a two 2 years microfinance experience.
 
+The platform separates borrower identity from borrower risk information.
+There could be three levels of information:
+
+Level 1 — Basic Verification
+Does this borrower have an existing credit exposure?
+Yes / No
+
+Level 2 — Risk Exposure
+Number of active Micro-finance institutions
+Total outstanding exposure
+Repayment status
+
+Level 3 — Detailed Information
+Only accessible under specific authorized circumstances and subject to applicable law, consent, and governance rules.
+This gives institutions control over how much information is shared.
+
 A comprehensive Django REST Framework API for managing institution verification, customer onboarding, and loan eligibility verification with complete audit trail and compliance logging.
 
 ## Features
