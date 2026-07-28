@@ -2,6 +2,8 @@
 It is a neutral, secure borrower-risk verification infrastructure that protects institutional data and does not facilitate customer poaching.
 The ideal was generated and visualized by Hassan Kalokoh from Sierra Leone West Africa serving as a Loan Officer from a two 2 years microfinance experience.
 
+Hakalo Verify is a privately developed fintech infrastructure designed to support responsible lending and secure borrower verification across Sierra Leone's financial ecosystem, operating within applicable regulatory and data-protection requirements.
+
 The platform separates borrower identity from borrower risk information.
 There could be three levels of information:
 
