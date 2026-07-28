@@ -1,6 +1,4 @@
-# Hakalo Verify [Verify befo yu Len]-is a Financial/ Credit Risk Verification Platform.
-It is a neutral, secure borrower-risk verification infrastructure that protects institutional data and does not facilitate customer poaching.
-The ideal was generated and visualized by Hassan Kalokoh from Sierra Leone West Africa serving as a Loan Officer from a two 2 years microfinance experience.
+# Hakalo Verify [Verify befo yu Len]-"National Responsible Lending Infrastructure.
 
 Hakalo Verify is a privately developed fintech infrastructure designed to support responsible lending and secure borrower verification across Sierra Leone's financial ecosystem, operating within applicable regulatory and data-protection requirements.
 
@@ -19,6 +17,9 @@ Repayment status
 Level 3 — Detailed Information
 Only accessible under specific authorized circumstances and subject to applicable law, consent, and governance rules.
 This gives institutions control over how much information is shared.
+
+It is a neutral, secure borrower-risk verification infrastructure that protects institutional data and does not facilitate customer poaching.
+The ideal was generated and visualized by Hassan Kalokoh from Sierra Leone West Africa serving as a Loan Officer from a two 2 years microfinance experience.
 
 A comprehensive Django REST Framework API for managing institution verification, customer onboarding, and loan eligibility verification with complete audit trail and compliance logging.
 
