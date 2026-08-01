@@ -5,8 +5,8 @@ from datetime import datetime
 
 class Institution(models.Model):
     """Model representing financial institutions"""
-    name = models.CharField(max_length=255, unique=True, nullable=False)
-    code = models.CharField(max_length=50, unique=True, nullable=False)
+    name = models.CharField(max_length=255, unique=True, null=False)
+    code = models.CharField(max_length=50, unique=True, null=False)
     country = models.CharField(max_length=100)
     website = models.URLField(blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
@@ -33,11 +33,11 @@ class Customer(models.Model):
     ]
     
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE, related_name='customers')
-    first_name = models.CharField(max_length=100, nullable=False)
-    last_name = models.CharField(max_length=100, nullable=False)
-    email = models.EmailField(unique=True, nullable=False)
-    phone = models.CharField(max_length=20, nullable=False)
-    national_id = models.CharField(max_length=50, unique=True, nullable=False)
+    first_name = models.CharField(max_length=100, null=False)
+    last_name = models.CharField(max_length=100, null=False)
+    email = models.EmailField(unique=True, null=False)
+    phone = models.CharField(max_length=20, null=False)
+    national_id = models.CharField(max_length=50, unique=True, null=False)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     address = models.TextField()
@@ -68,7 +68,7 @@ class VerificationRequest(models.Model):
     ]
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='verification_requests')
-    verification_code = models.CharField(max_length=100, unique=True, nullable=False)
+    verification_code = models.CharField(max_length=100, unique=True, null=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     verification_method = models.CharField(max_length=50, default='EMAIL')
     verification_data = models.JSONField(null=True, blank=True)
