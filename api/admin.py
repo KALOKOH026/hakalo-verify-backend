@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Institution, Customer, VerificationRequest, AuditLog
+from django.contrib.auth.models import User
+from .models import Institution, InstitutionMembership, Customer, VerificationRequest, AuditLog
 
 
 @admin.register(Institution)
@@ -8,6 +9,44 @@ class InstitutionAdmin(admin.ModelAdmin):
     search_fields = ['name', 'code', 'email']
     list_filter = ['is_active', 'created_at', 'country']
     readonly_fields = ['created_at', 'updated_at']
+
+    def has_module_permission(self, request):
+        return request.user.is_active and (request.user.is_superuser or self._is_institution_admin(request.user))
+
+    def has_view_permission(self, request, obj=None):
+        return self.has_module_permission(request) and (request.user.is_superuser or self._can_access_institution(request.user, obj))
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_module_permission(request) and (request.user.is_superuser or self._can_access_institution(request.user, obj))
+
+    def has_add_permission(self, request):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_superuser
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        membership = getattr(request.user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return qs.filter(pk=membership.institution_id)
+        return qs.none()
+
+    def _is_institution_admin(self, user):
+        membership = getattr(user, 'institution_membership', None)
+        return bool(membership and membership.is_active and membership.role == 'MFI_ADMIN')
+
+    def _can_access_institution(self, user, obj):
+        if user.is_superuser:
+            return True
+        membership = getattr(user, 'institution_membership', None)
+        if not membership or not membership.is_active:
+            return False
+        if obj is None:
+            return True
+        return obj.pk == membership.institution_id
     fieldsets = (
         ('Basic Information', {
             'fields': ('name', 'code', 'country')
@@ -25,12 +64,64 @@ class InstitutionAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(InstitutionMembership)
+class InstitutionMembershipAdmin(admin.ModelAdmin):
+    list_display = ['user', 'institution', 'role', 'is_active', 'created_at']
+    list_filter = ['role', 'is_active', 'institution']
+    search_fields = ['user__username', 'user__email', 'institution__name']
+    readonly_fields = ['created_at', 'updated_at']
+
+
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ['full_name', 'email', 'national_id', 'institution', 'is_verified', 'created_at']
     search_fields = ['first_name', 'last_name', 'email', 'phone', 'national_id']
     list_filter = ['is_verified', 'created_at', 'gender', 'institution']
     readonly_fields = ['created_at', 'updated_at']
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        if not request.user.is_superuser:
+            readonly_fields.append('institution')
+        return readonly_fields
+
+    def has_module_permission(self, request):
+        return request.user.is_active and (request.user.is_superuser or self._is_institution_admin(request.user))
+
+    def has_view_permission(self, request, obj=None):
+        return self.has_module_permission(request) and (request.user.is_superuser or self._can_access_customer(request.user, obj))
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_module_permission(request) and (request.user.is_superuser or self._can_access_customer(request.user, obj))
+
+    def has_add_permission(self, request):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_superuser
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        membership = getattr(request.user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return qs.filter(institution_id=membership.institution_id)
+        return qs.none()
+
+    def _is_institution_admin(self, user):
+        membership = getattr(user, 'institution_membership', None)
+        return bool(membership and membership.is_active and membership.role == 'MFI_ADMIN')
+
+    def _can_access_customer(self, user, obj):
+        if user.is_superuser:
+            return True
+        membership = getattr(user, 'institution_membership', None)
+        if not membership or not membership.is_active:
+            return False
+        if obj is None:
+            return True
+        return obj.institution_id == membership.institution_id
     fieldsets = (
         ('Personal Information', {
             'fields': ('first_name', 'last_name', 'national_id', 'date_of_birth', 'gender')
@@ -91,6 +182,12 @@ class AuditLogAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'action', 'model_name', 'object_repr', 'description']
     list_filter = ['action', 'model_name', 'created_at']
     readonly_fields = ['created_at', 'user', 'action', 'model_name', 'object_id', 'old_values', 'new_values', 'ip_address', 'user_agent', 'description']
+
+    def has_module_permission(self, request):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_superuser
     fieldsets = (
         ('Action Information', {
             'fields': ('action', 'user', 'model_name')

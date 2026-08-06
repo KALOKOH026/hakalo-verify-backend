@@ -1,0 +1,162 @@
+[
+  {
+    "model": "auth.user",
+    "pk": 1001,
+    "fields": {
+      "password": "pbkdf2_sha256$870000$synthetic$synthetic",
+      "last_login": null,
+      "is_superuser": true,
+      "username": "platform-admin",
+      "first_name": "",
+      "last_name": "",
+      "email": "platform-admin@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 1002,
+    "fields": {
+      "password": "pbkdf2_sha256$870000$synthetic$synthetic",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "mfi-admin",
+      "first_name": "",
+      "last_name": "",
+      "email": "mfi-admin@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 1003,
+    "fields": {
+      "password": "pbkdf2_sha256$870000$synthetic$synthetic",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "mfi-staff",
+      "first_name": "",
+      "last_name": "",
+      "email": "mfi-staff@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "api.institution",
+    "pk": 2001,
+    "fields": {
+      "name": "Synthetic MFI A",
+      "code": "MFIA",
+      "country": "Kenya",
+      "website": null,
+      "email": "mfi-a@example.com",
+      "phone": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "is_active": true
+    }
+  },
+  {
+    "model": "api.institution",
+    "pk": 2002,
+    "fields": {
+      "name": "Synthetic MFI B",
+      "code": "MFIB",
+      "country": "Kenya",
+      "website": null,
+      "email": "mfi-b@example.com",
+      "phone": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "is_active": true
+    }
+  },
+  {
+    "model": "api.institutionmembership",
+    "pk": 3001,
+    "fields": {
+      "user": 1002,
+      "institution": 2001,
+      "role": "MFI_ADMIN",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "api.institutionmembership",
+    "pk": 3002,
+    "fields": {
+      "user": 1003,
+      "institution": 2001,
+      "role": "MFI_STAFF",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "api.customer",
+    "pk": 4001,
+    "fields": {
+      "institution": 2001,
+      "first_name": "Synthetic",
+      "last_name": "Customer A",
+      "email": "customer-a@example.com",
+      "phone": "+254700000001",
+      "national_id": "MFIA-001",
+      "date_of_birth": "1990-01-01",
+      "gender": "M",
+      "address": "Synthetic Street 1",
+      "city": "Nairobi",
+      "country": "Kenya",
+      "is_verified": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "api.customer",
+    "pk": 4002,
+    "fields": {
+      "institution": 2002,
+      "first_name": "Synthetic",
+      "last_name": "Customer B",
+      "email": "customer-b@example.com",
+      "phone": "+254700000002",
+      "national_id": "MFIB-001",
+      "date_of_birth": "1990-01-02",
+      "gender": "F",
+      "address": "Synthetic Street 2",
+      "city": "Nairobi",
+      "country": "Kenya",
+      "is_verified": false,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "api.auditlog",
+    "pk": 5001,
+    "fields": {
+      "user": 1002,
+      "institution": 2001,
+      "action": "CREATE",
+      "model_name": "Customer",
+      "object_id": "4001",
+      "object_repr": "Synthetic Customer A",
+      "old_values": null,
+      "new_values": null,
+      "ip_address": "127.0.0.1",
+      "user_agent": "Synthetic Test Agent",
+      "description": "Synthetic audit for MFI A",
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]

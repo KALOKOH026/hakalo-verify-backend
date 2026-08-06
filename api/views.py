@@ -1,9 +1,8 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 
@@ -12,13 +11,14 @@ from .serializers import (
     InstitutionSerializer, CustomerSerializer, VerificationRequestSerializer,
     AuditLogSerializer
 )
+from .permissions import IsPlatformAdmin, IsMfiStaff, IsMfiAdmin, IsInstitutionScopedObject
 
 
 class InstitutionViewSet(viewsets.ModelViewSet):
     """ViewSet for Institution model"""
     queryset = Institution.objects.all()
     serializer_class = InstitutionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active', 'country']
     search_fields = ['name', 'code', 'email']
@@ -27,17 +27,28 @@ class InstitutionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [IsAdminUser]
+            permission_classes = [IsAuthenticated, IsPlatformAdmin]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
         return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Institution.objects.none()
+        if getattr(user, 'is_superuser', False):
+            return Institution.objects.all()
+        membership = getattr(user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return Institution.objects.filter(pk=membership.institution_id)
+        return Institution.objects.none()
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """ViewSet for Customer model"""
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['institution', 'is_verified', 'gender']
     search_fields = ['first_name', 'last_name', 'email', 'national_id', 'phone']
@@ -46,16 +57,29 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [IsAdminUser]
+            permission_classes = [IsAuthenticated, IsPlatformAdmin]
+        elif self.action in ['mark_verified']:
+            permission_classes = [IsAuthenticated, IsMfiAdmin]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
         return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Customer.objects.none()
+        if getattr(user, 'is_superuser', False):
+            return Customer.objects.all()
+        membership = getattr(user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return Customer.objects.filter(institution_id=membership.institution_id)
+        return Customer.objects.none()
 
     @action(detail=False, methods=['get'])
     def unverified(self, request):
         """Get all unverified customers"""
-        unverified = Customer.objects.filter(is_verified=False)
-        serializer = self.get_serializer(unverified, many=True)
+        queryset = self.get_queryset().filter(is_verified=False)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -71,7 +95,7 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
     """ViewSet for VerificationRequest model"""
     queryset = VerificationRequest.objects.all()
     serializer_class = VerificationRequestSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'verification_method']
     search_fields = ['verification_code', 'customer__first_name', 'customer__last_name', 'customer__email']
@@ -80,15 +104,28 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'destroy']:
-            permission_classes = [IsAdminUser]
+            permission_classes = [IsAuthenticated, IsPlatformAdmin]
+        elif self.action in ['approve', 'reject']:
+            permission_classes = [IsAuthenticated, IsMfiAdmin]
         else:
-            permission_classes = [IsAuthenticated]
+            permission_classes = [IsAuthenticated, IsInstitutionScopedObject]
         return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return VerificationRequest.objects.none()
+        if getattr(user, 'is_superuser', False):
+            return VerificationRequest.objects.all()
+        membership = getattr(user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return VerificationRequest.objects.filter(requesting_institution_id=membership.institution_id)
+        return VerificationRequest.objects.none()
 
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get all pending verification requests"""
-        pending = VerificationRequest.objects.filter(status='PENDING')
+        pending = self.get_queryset().filter(status='PENDING')
         serializer = self.get_serializer(pending, many=True)
         return Response(serializer.data)
 
@@ -153,7 +190,7 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
     def expired(self, request):
         """Get all expired verification requests"""
         now = timezone.now()
-        expired = VerificationRequest.objects.filter(expires_at__lt=now, status__in=['PENDING', 'IN_PROGRESS'])
+        expired = self.get_queryset().filter(expires_at__lt=now, status__in=['PENDING', 'IN_PROGRESS'])
         serializer = self.get_serializer(expired, many=True)
         return Response(serializer.data)
 
@@ -170,18 +207,29 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for AuditLog model (Read-only)"""
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
-    permission_classes = [IsAdminUser]  # Only admin can view audit logs
+    permission_classes = [IsAuthenticated, IsMfiAdmin]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['action', 'model_name', 'user']
     search_fields = ['description', 'object_repr', 'user__username']
     ordering_fields = ['created_at', 'action']
     ordering = ['-created_at']
 
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return AuditLog.objects.none()
+        if getattr(user, 'is_superuser', False):
+            return AuditLog.objects.all()
+        membership = getattr(user, 'institution_membership', None)
+        if membership and membership.is_active:
+            return AuditLog.objects.filter(institution_id=membership.institution_id)
+        return AuditLog.objects.none()
+
     @action(detail=False, methods=['get'])
     def recent(self, request):
         """Get recent audit logs from last 24 hours"""
         yesterday = timezone.now() - timedelta(days=1)
-        recent_logs = AuditLog.objects.filter(created_at__gte=yesterday)
+        recent_logs = self.get_queryset().filter(created_at__gte=yesterday)
         serializer = self.get_serializer(recent_logs, many=True)
         return Response(serializer.data)
 
@@ -192,6 +240,6 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         if not username:
             return Response({'error': 'username parameter required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        logs = AuditLog.objects.filter(user__username=username)
+        logs = self.get_queryset().filter(user__username=username)
         serializer = self.get_serializer(logs, many=True)
         return Response(serializer.data)
