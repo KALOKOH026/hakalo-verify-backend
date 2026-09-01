@@ -61,18 +61,57 @@ class VerificationRequestSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             membership = getattr(request.user, 'institution_membership', None)
             validated_data['requested_by'] = request.user
-            if membership and membership.is_active:
-                validated_data['requesting_institution'] = membership.institution
-            elif 'customer' in validated_data and validated_data['customer'].institution_id:
-                validated_data['requesting_institution'] = validated_data['customer'].institution
-            elif request.data.get('requesting_institution'):
-                validated_data['requesting_institution'] = Institution.objects.get(pk=request.data.get('requesting_institution'))
+            
+            # Validate customer belongs to user's institution
+            customer = validated_data.get('customer')
+            if customer:
+                if membership and membership.is_active:
+                    # Staff/Admin can only create verification for their own institution's customers
+                    if customer.institution_id != membership.institution_id:
+                        raise serializers.ValidationError(
+                            "Customer must belong to your institution."
+                        )
+                    validated_data['requesting_institution'] = membership.institution
+                elif request.user.is_superuser:
+                    # Superuser: derive from customer's institution
+                    validated_data['requesting_institution'] = customer.institution
+                else:
+                    raise serializers.ValidationError(
+                        "User must be a member of an institution or a platform administrator."
+                    )
+            else:
+                raise serializers.ValidationError("Customer is required.")
+                
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         validated_data.pop('requested_by', None)
         validated_data.pop('requesting_institution', None)
         return super().update(instance, validated_data)
+
+    def to_representation(self, instance):
+        """
+        Filter sensitive fields based on user role.
+        MFI_STAFF: Hide verification_data, verified_by, verified_at, rejection_reason
+        MFI_ADMIN: Show all fields
+        Platform Admin: Show all fields
+        """
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        
+        if request and request.user.is_authenticated:
+            membership = getattr(request.user, 'institution_membership', None)
+            
+            # Only hide fields for non-admin MFI_STAFF
+            if membership and membership.is_active and membership.role == 'MFI_STAFF':
+                # Hide sensitive verification fields for staff
+                data.pop('verification_data', None)
+                data.pop('verified_by', None)
+                data.pop('verified_by_username', None)
+                data.pop('verified_at', None)
+                data.pop('rejection_reason', None)
+        
+        return data
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
