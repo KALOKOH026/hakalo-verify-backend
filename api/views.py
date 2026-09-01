@@ -88,7 +88,28 @@ class CustomerViewSet(viewsets.ModelViewSet):
         customer = self.get_object()
         customer.is_verified = True
         customer.save()
+        
+        # Log action
+        AuditLog.objects.create(
+            user=request.user,
+            action='VERIFY',
+            model_name='Customer',
+            object_id=str(customer.id),
+            object_repr=str(customer),
+            description=f'Marked customer as verified {customer.first_name} {customer.last_name}',
+            ip_address=self.get_client_ip(request),
+            institution=customer.institution
+        )
+        
         return Response({'status': 'customer marked as verified'})
+
+    def get_client_ip(self, request):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
 
 
 class VerificationRequestViewSet(viewsets.ModelViewSet):
@@ -122,6 +143,23 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
             return VerificationRequest.objects.filter(requesting_institution_id=membership.institution_id)
         return VerificationRequest.objects.none()
 
+    def get_object(self):
+        """
+        Override to ensure customer belongs to the verification's institution.
+        This provides defense-in-depth against data corruption or edge cases.
+        """
+        obj = super().get_object()
+        
+        # Validate that customer's institution matches verification's requesting_institution
+        if obj.customer.institution_id != obj.requesting_institution_id:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(
+                "Verification request customer does not belong to the requesting institution. "
+                "Data integrity issue detected."
+            )
+        
+        return obj
+
     @action(detail=False, methods=['get'])
     def pending(self, request):
         """Get all pending verification requests"""
@@ -150,7 +188,8 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
             object_id=str(verification.id),
             object_repr=str(verification),
             description=f'Approved verification request {verification.verification_code}',
-            ip_address=self.get_client_ip(request)
+            ip_address=self.get_client_ip(request),
+            institution=verification.requesting_institution
         )
         
         return Response({
@@ -178,7 +217,8 @@ class VerificationRequestViewSet(viewsets.ModelViewSet):
             object_id=str(verification.id),
             object_repr=str(verification),
             description=f'Rejected verification request {verification.verification_code}: {reason}',
-            ip_address=self.get_client_ip(request)
+            ip_address=self.get_client_ip(request),
+            institution=verification.requesting_institution
         )
         
         return Response({
