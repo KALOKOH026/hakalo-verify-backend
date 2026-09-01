@@ -427,15 +427,21 @@ class VerificationRequestAPITests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
+        self.institution = Institution.objects.create(
+            name="Test Bank",
+            code="TSB001",
+            country="Kenya"
+        )
         self.admin_user = User.objects.create_superuser(
             username="admin",
             password="adminpass123",
             email="admin@example.com"
         )
-        self.institution = Institution.objects.create(
-            name="Test Bank",
-            code="TSB001",
-            country="Kenya"
+        # Add membership for admin_user to allow verification creation
+        InstitutionMembership.objects.create(
+            user=self.admin_user,
+            institution=self.institution,
+            role='MFI_ADMIN'
         )
         self.customer = Customer.objects.create(
             institution=self.institution,
@@ -453,7 +459,9 @@ class VerificationRequestAPITests(APITestCase):
         self.verification = VerificationRequest.objects.create(
             customer=self.customer,
             verification_code="VER-2026-000001",
-            status="PENDING"
+            status="PENDING",
+            requesting_institution=self.institution,
+            requested_by=self.admin_user
         )
 
     def test_verification_pending_endpoint(self):
