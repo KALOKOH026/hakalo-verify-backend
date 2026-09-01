@@ -402,6 +402,18 @@ class CustomerAPITests(APITestCase):
         self.customer.refresh_from_db()
         self.assertTrue(self.customer.is_verified)
 
+    def test_customer_mark_verified_creates_audit_log(self):
+        """Test that marking customer as verified creates audit log (Stage 3)"""
+        self.client.force_authenticate(user=self.admin_user)
+        initial_audit_count = AuditLog.objects.count()
+        response = self.client.post(f"/api/customers/{self.customer.id}/mark_verified/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(AuditLog.objects.count(), initial_audit_count + 1)
+        audit_log = AuditLog.objects.latest('id')
+        self.assertEqual(audit_log.action, 'VERIFY')
+        self.assertEqual(audit_log.model_name, 'Customer')
+        self.assertEqual(audit_log.object_id, str(self.customer.id))
+
     def test_customer_search_by_email(self):
         """Test customer search by email"""
         self.client.force_authenticate(user=self.user)
@@ -479,6 +491,239 @@ class VerificationRequestAPITests(APITestCase):
         self.client.post(f"/api/verifications/{self.verification.id}/approve/")
         self.customer.refresh_from_db()
         self.assertTrue(self.customer.is_verified)
+
+    def test_verification_approve_creates_audit_log(self):
+        """Test that approving verification creates audit log (Stage 3)"""
+        self.client.force_authenticate(user=self.admin_user)
+        initial_audit_count = AuditLog.objects.count()
+        self.client.post(f"/api/verifications/{self.verification.id}/approve/")
+        self.assertEqual(AuditLog.objects.count(), initial_audit_count + 1)
+        audit_log = AuditLog.objects.latest('id')
+        self.assertEqual(audit_log.action, 'VERIFY')
+        self.assertEqual(audit_log.model_name, 'VerificationRequest')
+
+    def test_verification_reject_creates_audit_log(self):
+        """Test that rejecting verification creates audit log (Stage 3)"""
+        self.client.force_authenticate(user=self.admin_user)
+        initial_audit_count = AuditLog.objects.count()
+        self.client.post(
+            f"/api/verifications/{self.verification.id}/reject/",
+            {"reason": "Missing documents"}
+        )
+        self.assertEqual(AuditLog.objects.count(), initial_audit_count + 1)
+        audit_log = AuditLog.objects.latest('id')
+        self.assertEqual(audit_log.action, 'REJECT')
+
+
+class Stage3SecurityTests(APITestCase):
+    """Stage 3: Tests for controlled verification workflow security"""
+
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create two institutions
+        self.institution_a = Institution.objects.create(name='Institution A', code='INSTA', country='Kenya')
+        self.institution_b = Institution.objects.create(name='Institution B', code='INSTB', country='Kenya')
+        
+        # Create users for institution A
+        self.staff_a = User.objects.create_user(username='staff_a', password='pass123')
+        self.admin_a = User.objects.create_user(username='admin_a', password='pass123')
+        
+        # Create user for institution B
+        self.admin_b = User.objects.create_user(username='admin_b', password='pass123')
+        
+        # Set up memberships
+        InstitutionMembership.objects.create(user=self.staff_a, institution=self.institution_a, role='MFI_STAFF')
+        InstitutionMembership.objects.create(user=self.admin_a, institution=self.institution_a, role='MFI_ADMIN')
+        InstitutionMembership.objects.create(user=self.admin_b, institution=self.institution_b, role='MFI_ADMIN')
+        
+        # Create customers
+        self.customer_a = Customer.objects.create(
+            institution=self.institution_a, first_name='A', last_name='Cust',
+            email='a@example.com', phone='111', national_id='A001',
+            date_of_birth='1990-01-01', gender='M', address='x', city='n', country='Kenya'
+        )
+        self.customer_b = Customer.objects.create(
+            institution=self.institution_b, first_name='B', last_name='Cust',
+            email='b@example.com', phone='222', national_id='B001',
+            date_of_birth='1990-01-01', gender='M', address='x', city='n', country='Kenya'
+        )
+
+    def test_stage3_cross_institution_verification_denied(self):
+        """Test: User cannot create verification for another institution's customer (Requirement #1)"""
+        self.client.force_authenticate(user=self.admin_a)
+        data = {
+            'customer': self.customer_b.id,  # Customer from Institution B
+            'verification_code': 'VER-CROSS-001',
+            'status': 'PENDING'
+        }
+        response = self.client.post('/api/verifications/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Customer must belong to your institution', str(response.data))
+
+    def test_stage3_verification_requested_by_enforcement(self):
+        """Test: requested_by is always set from authenticated user, not client (Requirement #2)"""
+        self.client.force_authenticate(user=self.admin_a)
+        data = {
+            'customer': self.customer_a.id,
+            'verification_code': 'VER-REQBY-001',
+            'status': 'PENDING',
+            'requested_by': 999  # Try to override - should be ignored
+        }
+        response = self.client.post('/api/verifications/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        verification = VerificationRequest.objects.get(verification_code='VER-REQBY-001')
+        self.assertEqual(verification.requested_by, self.admin_a)  # Should be the authenticated user
+
+    def test_stage3_requesting_institution_derived_from_user(self):
+        """Test: requesting_institution is derived from user's institution, not client input (Requirement #3)"""
+        self.client.force_authenticate(user=self.admin_a)
+        data = {
+            'customer': self.customer_a.id,
+            'verification_code': 'VER-INST-001',
+            'status': 'PENDING',
+            'requesting_institution': self.institution_b.id  # Try to set to another institution
+        }
+        response = self.client.post('/api/verifications/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        verification = VerificationRequest.objects.get(verification_code='VER-INST-001')
+        self.assertEqual(verification.requesting_institution, self.institution_a)  # Should be user's institution
+
+    def test_stage3_staff_cannot_browse_other_institution_customers(self):
+        """Test: Staff user cannot see another institution's customers (Requirement #4)"""
+        self.client.force_authenticate(user=self.staff_a)
+        response = self.client.get(f'/api/customers/{self.customer_b.id}/')
+        self.assertIn(response.status_code, [403, 404])
+
+    def test_stage3_staff_cannot_see_sensitive_verification_fields(self):
+        """Test: Staff users cannot see sensitive fields like verification_data, rejection_reason (Requirement #5)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a,
+            verification_code='VER-STAFF-001',
+            status='PENDING',
+            requesting_institution=self.institution_a,
+            requested_by=self.staff_a,
+            verification_data={'test': 'data'},
+            rejection_reason='Some reason'
+        )
+        self.client.force_authenticate(user=self.staff_a)
+        response = self.client.get(f'/api/verifications/{verification.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Staff should NOT see these fields
+        self.assertNotIn('verification_data', response.data)
+        self.assertNotIn('rejection_reason', response.data)
+        self.assertNotIn('verified_by', response.data)
+        self.assertNotIn('verified_at', response.data)
+
+    def test_stage3_admin_can_see_all_verification_fields(self):
+        """Test: Admin users can see all fields including sensitive data (Requirement #5)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a,
+            verification_code='VER-ADMIN-001',
+            status='REJECTED',
+            requesting_institution=self.institution_a,
+            requested_by=self.admin_a,
+            verification_data={'test': 'data'},
+            rejection_reason='Incomplete documents'
+        )
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get(f'/api/verifications/{verification.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Admin SHOULD see all fields
+        self.assertIn('verification_data', response.data)
+        self.assertIn('rejection_reason', response.data)
+        self.assertEqual(response.data['rejection_reason'], 'Incomplete documents')
+
+    def test_stage3_only_admin_can_approve_verification(self):
+        """Test: Only MFI_ADMIN can approve verification (Requirement #6)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a, verification_code='VER-APPROVE-001',
+            status='PENDING', requesting_institution=self.institution_a, requested_by=self.staff_a
+        )
+        
+        # Staff cannot approve
+        self.client.force_authenticate(user=self.staff_a)
+        response = self.client.post(f'/api/verifications/{verification.id}/approve/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Admin can approve
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(f'/api/verifications/{verification.id}/approve/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_stage3_only_admin_can_reject_verification(self):
+        """Test: Only MFI_ADMIN can reject verification (Requirement #6)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a, verification_code='VER-REJECT-001',
+            status='PENDING', requesting_institution=self.institution_a, requested_by=self.staff_a
+        )
+        
+        # Staff cannot reject
+        self.client.force_authenticate(user=self.staff_a)
+        response = self.client.post(f'/api/verifications/{verification.id}/reject/', {'reason': 'test'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Admin can reject
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(f'/api/verifications/{verification.id}/reject/', {'reason': 'Missing docs'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_stage3_approve_creates_audit_trail(self):
+        """Test: Approve action creates audit log entry (Requirement #7)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a, verification_code='VER-AUDIT-APPROVE',
+            status='PENDING', requesting_institution=self.institution_a, requested_by=self.admin_a
+        )
+        initial_count = AuditLog.objects.filter(action='VERIFY').count()
+        
+        self.client.force_authenticate(user=self.admin_a)
+        self.client.post(f'/api/verifications/{verification.id}/approve/')
+        
+        self.assertEqual(AuditLog.objects.filter(action='VERIFY').count(), initial_count + 1)
+        audit = AuditLog.objects.filter(action='VERIFY').latest('id')
+        self.assertEqual(audit.model_name, 'VerificationRequest')
+        self.assertEqual(audit.institution, self.institution_a)
+
+    def test_stage3_reject_creates_audit_trail(self):
+        """Test: Reject action creates audit log entry (Requirement #7)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a, verification_code='VER-AUDIT-REJECT',
+            status='PENDING', requesting_institution=self.institution_a, requested_by=self.admin_a
+        )
+        initial_count = AuditLog.objects.filter(action='REJECT').count()
+        
+        self.client.force_authenticate(user=self.admin_a)
+        self.client.post(f'/api/verifications/{verification.id}/reject/', {'reason': 'Docs incomplete'})
+        
+        self.assertEqual(AuditLog.objects.filter(action='REJECT').count(), initial_count + 1)
+        audit = AuditLog.objects.filter(action='REJECT').latest('id')
+        self.assertEqual(audit.model_name, 'VerificationRequest')
+
+    def test_stage3_customer_verification_mismatch_detected(self):
+        """Test: System detects and rejects verification if customer doesn't match institution (Requirement #8)"""
+        # Manually corrupt data (shouldn't happen normally, but defense-in-depth)
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a,  # From Institution A
+            verification_code='VER-CORRUPT-001',
+            status='PENDING',
+            requesting_institution=self.institution_b  # Mismatch!
+        )
+        
+        # Try to access - should fail
+        self.client.force_authenticate(user=self.admin_b)
+        response = self.client.get(f'/api/verifications/{verification.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_stage3_cross_institution_admin_cannot_approve_others_verification(self):
+        """Test: Admin from Institution B cannot approve verification from Institution A (Requirement #6, #9)"""
+        verification = VerificationRequest.objects.create(
+            customer=self.customer_a, verification_code='VER-CROSS-ADMIN-001',
+            status='PENDING', requesting_institution=self.institution_a, requested_by=self.admin_a
+        )
+        
+        self.client.force_authenticate(user=self.admin_b)
+        response = self.client.post(f'/api/verifications/{verification.id}/approve/')
+        self.assertIn(response.status_code, [403, 404])
 
 
 class AuditLogAPITests(APITestCase):
