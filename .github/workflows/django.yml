@@ -32,9 +32,13 @@ jobs:
         pip install -r requirements.txt
     
     - name: Run Django Check
+      env:
+        DEBUG: "true"
       run: |
         python manage.py check
     
     - name: Run Tests
+      env:
+        DEBUG: "true"
       run: |
         python manage.py test --verbosity=2
