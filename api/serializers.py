@@ -65,16 +65,16 @@ class VerificationRequestSerializer(serializers.ModelSerializer):
             # Validate customer belongs to user's institution
             customer = validated_data.get('customer')
             if customer:
-                if membership and membership.is_active:
+                if request.user.is_superuser:
+                    # Superuser: derive from customer's institution
+                    validated_data['requesting_institution'] = customer.institution
+                elif membership and membership.is_active:
                     # Staff/Admin can only create verification for their own institution's customers
                     if customer.institution_id != membership.institution_id:
                         raise serializers.ValidationError(
                             "Customer must belong to your institution."
                         )
                     validated_data['requesting_institution'] = membership.institution
-                elif request.user.is_superuser:
-                    # Superuser: derive from customer's institution
-                    validated_data['requesting_institution'] = customer.institution
                 else:
                     raise serializers.ValidationError(
                         "User must be a member of an institution or a platform administrator."
